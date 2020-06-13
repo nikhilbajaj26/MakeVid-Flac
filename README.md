@@ -1,18 +1,23 @@
-# MakeVideo-flac
-Create a youtube-ready video from flac file(s)+image
-
-Not yet tested on a mac.
-
+# MakeVid-Flac
+Interactively create youtube-ready videos from flac file(s) + image.
 ## Requirements
-ffmpeg 4 (see AClassicalPlaylist-DL for instructions all platform)
-
-also imagemagick. 
+#### ffmpeg 4 
+- See [AClassicalPlaylist-DL/README](https://github.com/nikhilbajaj26/AClassicalPlaylist-DL/blob/master/README.md) for installation instructions, Mac+Windows
+  - Mac users, you don't need to upgrade to bash 5, although it doesn't hurt to do so.
+#### ImageMagick
+  - Windows 10 (WSL)
 ```
 sudo apt-get install imagemagick
 ```
-on WSL. Mac, homebrew works fine. Still have to check if bash 3 will be OK. Probably yes.
-
-## How to use
-Create folders, each containing flacs/images you want to make into video. Run script in parent directory, if you run in interactive mode you can resize images/edit tracklists, and title your videos. Quiet mode = script will choose first image it finds and use all flac files in whichever order they appear. 
-
-Enjoy :) No reencoding, none of your files modified, videos should have minimal file size and should encode fairly quick (depends on your CPU).
+  - Mac, using homebrew (you should have it if you followed the above instructions)
+```
+brew install imagemagick
+```
+## Usage
+- Move makevid.sh to an empty directory, then create folders containing the flac(s) and images that you want to combine into videos. The script will process each folder individually and generate videos in the parent directory.
+- Interactive mode allows you to customize video titles and tracklists, and to resize images to fit any widescreen resolution (720p, 1080p, custom). Quiet mode will not prompt for user input and will instead use the first image it finds + all flac files in a directory to make a video.
+#### FYI
+- Acceptable image extensions: png, jpg, jpeg. 
+- The script will not modify any existing files nor generate any extraneous ones upon completion besides the mkv videos. 
+- Audio files are not re-encoded at any point. Stream copy only.
+- Note that image size has no bearing on audio quality when uploading to youtube. As of 6/13/2020, youtube uses the excellent opus codec for all videos.
