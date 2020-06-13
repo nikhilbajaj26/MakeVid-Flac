@@ -1,2 +1,2 @@
 # MakeVideo-flac
-Create a YT-ready video from flac file(s)+image.
+Create a youtube-ready video from flac file(s)+image
