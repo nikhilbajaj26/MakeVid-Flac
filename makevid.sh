@@ -1,7 +1,7 @@
 #!/bin/bash
 shopt -s nullglob
 shopt -s dotglob
-#Requires ffmpeg 4+, also imagemagick now I guess.
+#Requires ffmpeg 4+, also imagemagick now I guess. All fine on mac sierra.
 
 #Naming fxn
 namer () {
@@ -17,8 +17,11 @@ namer () {
 }
 
 table () {
-  y='-'
-  length=$(printf "%s\n" "$1" "${table_list[@]}" | wc -L)
+  y='-' # wc -L is GNUism and not work on mac. The rest ok.
+  words=( "$1" "${table_list[@]}" ); length=0
+  for d in "${words[@]}"; do
+    (( ${#d} > length )) && length=${#d}
+  done
   div=$y$y; ldiv=2 #Mininum padding on either side
   header=$(printf "$1" | wc -m)
   while (( (header+(2*ldiv)) < length )); do
@@ -255,7 +258,7 @@ for i in "${!todo_list[@]}"; do
         for j in "${list[@]}"; do
           m=0
           for k in "${!indices[@]}"; do
-            [[ $j = ${indices[$k]} ]] && m=1 && echo "file '${wavfiles[$k]}.wav'" >> "$concat" && break
+            [[ $j = ${indices[$k]} ]] && m=1 && echo "file '${wavfiles[$k]}'" >> "$concat" && break
           done
           if [[ $m -eq 0 ]]; then
             namer "${#indices[@]}.wav"
@@ -282,3 +285,5 @@ for i in "${!todo_list[@]}"; do
   rm "${todo_list[$i]}" "$(cat "$temp")"
 done
 rm -f "$todo" "$prefs" "$temp" "$tlist" "$titles"
+
+clear #Ok, this is a bit nitpicky
