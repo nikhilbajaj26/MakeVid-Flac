@@ -13,6 +13,11 @@ sudo apt-get install imagemagick
 ```
 brew install imagemagick
 ```
+
+Remember to make executable!
+```
+chmod +x makevid.sh
+```
 ## Usage
 - Move makevid.sh to an empty directory, then create folders containing the flac(s) and images that you want to combine into videos. The script will process each folder individually and generate videos in the parent directory.
 - Interactive mode allows you to customize video titles and tracklists, and to resize images to fit any widescreen resolution (720p, 1080p, custom). Quiet mode will not prompt for user input and will instead use the first image it finds + all flac files in a directory to make a video.
