@@ -286,4 +286,4 @@ for i in "${!todo_list[@]}"; do
 done
 rm -f "$todo" "$prefs" "$temp" "$tlist" "$titles"
 
-clear #Ok, this is a bit nitpicky
+#clear
