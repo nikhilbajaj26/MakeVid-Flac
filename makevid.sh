@@ -1,7 +1,7 @@
 #!/bin/bash
 shopt -s nullglob
-shopt -s dotglob
-#Requires ffmpeg 4+, also imagemagick now I guess. All fine on mac sierra.
+set +o noclobber #set is posix, unlike shopt? idk. They have different opts.
+#Requires ffmpeg 4+ and imagemagick
 
 #Naming fxn
 namer () {
@@ -17,273 +17,357 @@ namer () {
 }
 
 table () {
-  y='-' # wc -L is GNUism and not work on mac. The rest ok.
+  y='-'
   words=( "$1" "${table_list[@]}" ); length=0
   for d in "${words[@]}"; do
     (( ${#d} > length )) && length=${#d}
   done
-  div=$y$y; ldiv=2 #Mininum padding on either side
-  header=$(printf "$1" | wc -m)
-  while (( (header+(2*ldiv)) < length )); do
+  div=$y$y
+  header=${#1}
+  while (( (header+(2*${#div})) < length )); do
     div+=$y
-    (( ldiv++ ))
   done
   printf "%s%s%s\n" $div "$1" $div
   printf "%s\n" "${table_list[@]}"
-  for (( c=0; c<$(( header+(2*ldiv) )); c++ )); do
+  for (( c=0; c<$(( header+(2*${#div}) )); c++ )); do
     printf $y
   done
   printf "\n"
   unset table_list
 }
 
-namer "todo.txt"
-todo="$PWD/$endname"
-namer "prefs.txt"
+#Preferences
+namer "preferences.txt"
 prefs="$PWD/$endname"
-namer "temp.txt"
-temp="$PWD/$endname"
-namer "tlist.txt"
-tlist="$PWD/$endname"
+
+#Titles
 namer "titles.txt"
 titles="$PWD/$endname"
+
+#Images
+namer "images.txt"
+images="$PWD/$endname"
+
+#Tracklists
+namer "tracklists.txt"
+tlists="$PWD/$endname"
+
 
 echo "Select mode"
 select global in "Interactive" "Quiet"; do [[ $global ]] && break; done
 
-for i in */; do
-  clear #cleanliness is good
-  (
-    cd "$i"
-    title="${i%/}"
+#first define makevid function.
+#Return breaks a function. Exit does the whole script.
+#makevid function as-is just does makevid w/ files in current directory. uses absolute paths, though, so can run anywhere, output will be where you started the fxn. Use this to recurse.
+
+makevid () {
+
+  [[ $global =~ ^I ]] && echo "$PWD"
+
+  [[ ! $(echo *.flac) ]] && return
+  [[ ! $(echo *.{png,jpg,jpeg}) ]] && return
+
+  title="$(basename "$PWD")"
+
+  #Interactive (title+image)
+  if [[ $global =~ ^I ]]; then
+
+    clear; echo "$PWD"
     table_list=( "$title" )
     table "TITLE"
-    [[ ! $(echo *.flac) ]] && printf "\nNo audio." && { read -t 1 -n 1 -s -r; exit; }
-    [[ ! $(echo *.{png,jpg,jpeg}) ]] && printf "\nNo images." && { read -t 1 -n 1 -s -r; exit; }
-    if [[ $global =~ ^I ]]; then
-      #edit title.
-      edit=0
-      if ! grep -qs '^i' "$prefs"; then #q=quiet,s=noerrors
-        printf "\n"
-        while true; do
-          read -p "Edit title? Type 'd' to permanently hide this prompt. (y/n/d)" ynd
-          case "$ynd" in
-            [Yy] ) edit=1; break;;
-            [Nn] ) break;;
-            [Dd] ) echo "i" >> "$prefs"; break;;
-            * ) echo "Please answer y/Y, n/N, or d/D.";;
-          esac
-        done
-      fi
 
-      if (( edit==1 )); then
-        echo "Enter new title:"; read title
-        clear
-        table_list=( "$title" )
-        table "TITLE"
-      fi
-
-      #Image
-      for j in *.{png,jpg,jpeg}; do
-        for k in {w,h}; do eval "$k=\$(identify -format \"%${k}\" \"$j\")"; done
-        list+=( "${j} (${w}x${h})" )
-      done
-      img=''
-      case ${#list[@]} in
-        1) img="${list[0]}"
-          ;;
-        *) printf "\nSelect image\n"
-          select img in "${list[@]}"; do
-            [[ "$img" ]] && break
-          done
-          ;;
-      esac
-      table_list=( "$img" )
+    #Title
+    edit=0
+    if ! grep -qs '^i' "$prefs"; then #q=quiet,s=noerrors
       printf "\n"
-      table "IMAGE"
-      newline=0
-      name="${img% (*)}"; dim="${img##* (}"; dim="${dim%)}"; w="${dim%x*}"; h="${dim#*x}"
-
-      #Saving image prefs...no word splitting in double brackets.
-      s=$(grep -s '^s' "$prefs"); res=${s#s}
-      if [[ ! $s ]]; then
-        printf "\n" && newline=1
-        read -p "Resize? (y/n)" ans
-        if [[ $ans =~ ^[Yy]$ ]]; then
-          select opt in "720p" "1080p" "Custom"; do
-            if [[ $opt =~ C ]]; then
-              while [[ ! $res =~ ^[1-9][0-9]*$ ]]; do
-                read -p "Enter custom resolution: " res
-                res="$(echo "$res" | sed -E 's/^0+//')"
-              done
-              break
-            elif [[ $opt ]]; then
-              res="${opt%p}"
-              break
-            fi
-          done
-        fi
-        read -p "Apply to all images? (y/n)" ans
-        [[ $ans =~ ^[Yy]$ ]] && echo "s${res}" >> "$prefs"
-      fi
-
-      #If no resize select, or prefs is existing but blank, res is null.
-      if [[ $res ]]; then
-        (( w>h )) && c='^' || c=''
-        namer "${name%.*}.png" #Sets endname to non-taken filename
-        (( newline==0 )) && printf "\n" && newline=1
-        printf "Resizing to ${res}p..."
-        convert "$name" -resize ${res}x${res}$c "$endname"
-        for k in {w,h}; do eval "$k=\$(identify -format \"%${k}\" \"$endname\")"; done
-        printf "Done!\n"; echo "Resized image: $name (${w}x${h})"
-      else
-        namer "$name"
-        cp "$name" "$endname"
-      fi
-
-    else
-      for j in *.{png,jpg,jpeg}; do name="$j"; break; done
-      namer "$name"
-      cp "$name" "$endname"
-      for k in {w,h}; do eval "$k=\$(identify -format \"%${k}\" \"$endname\")"; done
-    fi
-
-    if [[ $(( w%2 )) -ne 0 || $(( h%2 )) -ne 0 ]]; then
-      if [[ $global =~ ^I ]]; then
-        (( newline==0 )) && printf "\n" && newline=1
-        printf "Bad dimensions, shaving..."
-      fi
-      w=$(( w-(w%2) )); h=$(( h-(h%2) ))
-      convert "$endname" -crop ${w}x${h}+0+0 "$endname"
-      [[ $global =~ ^I ]] && printf "Done!\n" && echo "Shaved image: $name (${w}x${h})"
-    fi
-
-    #Audio
-    if [[ $global =~ ^I ]]; then
-      for k in *.flac; do table_list+=( "$k" ); done
-      flac_list=( "${table_list[@]}" )
-      printf "\n"
-      table "AUDIO" #or fnum
-      printf "\n"
-      edit=0
-      if ! grep -qs '^r' "$prefs"; then
-        while true; do
-          read -p "Edit tracklist? Type 'd' to permanently hide this prompt. (y/n/d)" ynd
-          case "$ynd" in
-            [Yy] ) edit=1; break;;
-            [Nn] ) printf "\n"; break;;
-            [Dd] ) echo "r" >> "$prefs"; printf "\n"; break;;
-            * ) echo "Please answer y/Y, n/N, or d/D.";;
-          esac
-        done
-      fi
-
-      if (( edit==1 )); then
-        track=''; len=${#flac_list[@]}; unset flac_list
-        while [[ ! $track = Exit ]]; do
-          clear
-          table_list=( "${flac_list[@]}" )
-          table "AUDIO"
-          printf "\n"
-          echo "Add tracks to list. Press $((len+1)) to reset, $((len+2)) to exit."
-          select track in *.flac Reset Exit; do
-            case "$track" in
-              Reset ) unset flac_list; break;;
-              Exit ) [[ ${#flac_list[@]} -eq "0" ]] && printf "\nError: must select at least one track to continue." && { read -t 1 -n 1 -s -r; track=''; } || printf "\n"
-              break;;
-              * ) [[ $track ]] && flac_list+=( "$track" ) && break;;
-            esac
-          done
-        done
-      fi
-
-      #store vars. image is image, endname is tracks file now.
-      image="$endname"
-      namer "tracks.txt"
-      printf "%s\n" "${flac_list[@]}" > "$endname"
       while true; do
-        read -p "Confirm make video? (y/n)" yn
-        case "$yn" in
-          [Yy] ) echo "${i}$image" >> "$todo"; echo "$endname" >> "$tlist"; echo "$title" >> "$titles"; break;;
-          [Nn] ) rm "$image"; rm "$endname"; exit;;
-          * ) echo "Please answer y/Y or n/N.";;
+        read -p "Edit title? Type 'd' to permanently hide this prompt. (y/n/d)" ynd
+        case "$ynd" in
+          [Yy] ) edit=1; break;;
+          [Nn] ) break;;
+          [Dd] ) echo "i" >> "$prefs"; break;;
+          * ) echo "Please answer y/Y, n/N, or d/D.";;
         esac
       done
-    else
-      image="$endname"
-      namer "tracks.txt"
-      printf "%s\n" *.flac > "$endname"
-      echo "${i}$image" >> "$todo"
-      echo "$endname" >> "$tlist"
-      echo "$title" >> "$titles"
     fi
-  )
-done
+    if (( edit==1 )); then
+      title=''
+      while [[ ! $title ]]; do
+        echo "Enter new title:"; read title
+        title="$(echo "$title" | sed 's@/@-@g')"
+      done
+      clear; echo "$PWD"
+      table_list=( "$title" )
+      table "TITLE"
+    fi
 
-if [[ -e $todo ]]; then
-  while IFS= read -r line; do
-    todo_list+=( "$line" )
-  done < "$todo"
-fi
-if [[ -e $tlist ]]; then
-  while IFS= read -r line; do
-    tlist_list+=( "$line" )
-  done < "$tlist"
-fi
+    #Image
+    unset list
+    for j in *.{png,jpg,jpeg}; do
+      for k in {w,h}; do eval "$k=\$(identify -format \"%${k}\" \"$j\")"; done
+      list+=( "${j} (${w}x${h})" )
+    done
+    case ${#list[@]} in
+      1) img="${list[0]}"
+        ;;
+      *) printf "\nSelect image\n"
+        select img in "${list[@]}"; do
+          [[ "$img" ]] && break
+        done
+        ;;
+    esac
+    table_list=( "$img" )
+    printf "\n"
+    table "IMAGE"
+    newline=0
+    name="${img% (*)}"; dim="${img##* (}"; dim="${dim%)}"; w="${dim%x*}"; h="${dim#*x}"
+
+    #Image resize
+    s=$(grep -s '^s' "$prefs"); res=${s#s}
+    if [[ ! $s ]]; then
+      printf "\n" && newline=1
+      #Ask resize
+      resize=0
+      while true; do
+        read -p "Resize image? Type 'd' to permanently hide this prompt. (y/n/d)" ynd
+        case "$ynd" in
+          [Yy] ) resize=1; break;;
+          [Nn] ) break;;
+          [Dd] ) echo "s" >> "$prefs"; break;;
+          * ) echo "Please answer y/Y, n/N, or d/D.";;
+        esac
+      done
+      if (( resize==1 )); then
+        #Ask res
+        select opt in "1080p" "720p" "Custom"; do
+          if [[ $opt =~ C ]]; then
+            while [[ ! $res =~ ^[1-9][0-9]*$ ]]; do
+              read -p "Enter custom resolution: " res
+              res="$(echo "$res" | sed -E 's/^0+//')"
+            done
+            break
+          elif [[ $opt ]]; then
+            res="${opt%p}"
+            break
+          fi
+        done
+        #Apply to all y/n
+        while true; do
+          read -p "Apply to all images? (y/n)" yn
+          case "$yn" in
+            [Yy] ) echo "s${res}" >> "$prefs"; break;;
+            [Nn] ) break;;
+            * ) echo "Please answer y/Y or n/N.";;
+          esac
+        done
+      fi
+    fi
+
+    #Actual resize, either read from prefs or stored from above
+    if [[ $res ]]; then
+      (( w>h )) && c='^' || c=''
+      namer "${name%.*}.png" #Sets endname to non-taken filename
+      (( newline==0 )) && printf "\n" && newline=1
+      printf "Resizing to ${res}p..."
+      convert "$name" -resize ${res}x${res}$c "$endname"
+      for k in {w,h}; do eval "$k=\$(identify -format \"%${k}\" \"$endname\")"; done
+      printf "Done!\n"; echo "Resized image: $name (${w}x${h})"
+    else
+      namer "$name"
+      cp "$name" "$endname"
+    fi
+
+  #Quiet (title+image)
+  else
+    for j in *.{png,jpg,jpeg}; do name="$j"; break; done
+    namer "$name"
+    cp "$name" "$endname"
+    for k in {w,h}; do eval "$k=\$(identify -format \"%${k}\" \"$endname\")"; done
+  fi
+
+  #Bad dimension fix (BOTH MODES, but no msgs. in quiet)
+  if [[ $(( w%2 )) -ne 0 || $(( h%2 )) -ne 0 ]]; then
+    if [[ $global =~ ^I ]]; then
+      (( newline==0 )) && printf "\n" && newline=1
+      printf "Bad dimensions, shaving..."
+    fi
+    w=$(( w-(w%2) )); h=$(( h-(h%2) ))
+    convert "$endname" -crop ${w}x${h}+0+0 "$endname"
+    [[ $global =~ ^I ]] && printf "Done!\n" && echo "Shaved image: $name (${w}x${h})"
+  fi
+
+  #Free up endname variable (both modes)
+  image="$endname"
+
+  #Interactive (audio)
+  if [[ $global =~ ^I ]]; then
+    #Track selection
+    for k in *.flac; do table_list+=( "$k" ); done
+    flac_list=( "${table_list[@]}" )
+    printf "\n"
+    table "AUDIO" #or fnum
+    printf "\n"
+    edit=0
+    if ! grep -qs '^r' "$prefs"; then
+      while true; do
+        read -p "Edit tracklist? Type 'd' to permanently hide this prompt. (y/n/d)" ynd
+        case "$ynd" in
+          [Yy] ) edit=1; break;;
+          [Nn] ) printf "\n"; break;;
+          [Dd] ) echo "r" >> "$prefs"; printf "\n"; break;;
+          * ) echo "Please answer y/Y, n/N, or d/D.";;
+        esac
+      done
+    fi
+    if (( edit==1 )); then
+      track=''; len=${#flac_list[@]}; unset flac_list
+      while [[ ! $track = Exit ]]; do
+        clear; echo "$PWD"
+        table_list=( "${flac_list[@]}" )
+        table "AUDIO"
+        printf "\n"
+        echo "Add tracks to list. Press $((len+1)) to reset, $((len+2)) to exit."
+        select track in *.flac Reset Exit; do
+          case "$track" in
+            Reset ) unset flac_list; break;;
+            Exit ) [[ ${#flac_list[@]} -eq "0" ]] && printf "\nError: must select at least one track to continue." && { read -t 1 -n 1 -s -r; track=''; } || printf "\n"
+            break;;
+            * ) [[ $track ]] && flac_list+=( "$track" ) && break;;
+          esac
+        done
+      done
+    fi
+
+    #Confirm and finish
+    namer "tracks.txt"
+    printf "%s\n" "${flac_list[@]}" > "$endname"
+    while true; do
+      read -p "Confirm make video? (y/n)" yn
+      case "$yn" in
+        [Yy] ) echo "$PWD/$image" >> "$images"
+              echo "$PWD/$endname" >> "$tlists"
+              echo "$title" >> "$titles"
+              break
+              ;;
+        [Nn] ) rm "$image"
+              rm "$endname"
+              clear #Clean!
+              return
+              ;;
+        * ) echo "Please answer y/Y or n/N.";;
+      esac
+    done
+    clear #Clean!
+
+  #Quiet (audio)
+  else
+    namer "tracks.txt"
+    printf "%s\n" *.flac > "$endname"
+    echo "$PWD/$image" >> "$images"
+    echo "$PWD/$endname" >> "$tlists"
+    echo "$title" >> "$titles"
+  fi
+
+}
+
+#Recursion
+delve () {
+  for i in */; do
+    ( cd "$i"; delve )
+  done
+  makevid
+}
+
+#Main
+for i in */; do
+  ( cd "$i"; [[ "$1" =~ ^-?[rR]$ ]] && delve || makevid )
+done
+makevid
+
+#Prepare to makevid
 if [[ -e $titles ]]; then
+  #Read all titles...
   while IFS= read -r line; do
     titles_list+=( "$line" )
   done < "$titles"
+  #images...
+  while IFS= read -r line; do
+    images_list+=( "$line" )
+  done < "$images"
+  #and tracklists.
+  while IFS= read -r line; do
+    tlists_list+=( "$line" )
+  done < "$tlists"
+  #If one file exists, they all do.
 fi
 
-clear
+#Processing on fresh screen. Clear screen on interactive, regardless.
+[[ $global =~ ^I ]] && clear || printf "\n"
 
-#Test just this :)
-for i in "${!todo_list[@]}"; do
-  folder="${todo_list[$i]}"; folder="${folder%/*}"
-  printf "\nProcessing $folder..."
+#Actual makevid. Cycle through indices.
+for i in "${!titles_list[@]}"; do
+
+  folder="${images_list[$i]}"; folder="${folder%/*}"
+  printf "Processing $folder..."
   (
     cd "$folder"
+
+    #Read tracklist
+    while IFS= read -r line; do
+      tracks+=( "$line" )
+    done < "${tlists_list[$i]}"
+
+    #Name output
     namer "out.flac"
     out="$endname"
-    while IFS= read -r line; do
-      list+=( "$line" )
-    done < "${tlist_list[$i]}"
-    case ${#list[@]} in
-      1) ffmpeg -loglevel error -i "${list[0]}" -vn -c:a copy "$out"
+
+    #Process tracks, 1 or more
+    case ${#tracks[@]} in
+      1) ffmpeg -loglevel error -i "${tracks[0]}" -vn -c:a copy "$out"
         ;;
-      #Artwork removed automatically when concat-demuxing as below
+      #Artwork removed automatically when concat-demuxing wavs
       *) namer "concat.txt"
         concat="$endname"
-        for j in "${list[@]}"; do
+        for j in "${tracks[@]}"; do
           m=0
-          for k in "${!indices[@]}"; do
-            [[ $j = ${indices[$k]} ]] && m=1 && echo "file '${wavfiles[$k]}'" >> "$concat" && break
+          for k in "${!flacs[@]}"; do
+            [[ $j = ${flacs[$k]} ]] && m=1 && echo "file '${wavs[$k]}'" >> "$concat" && break
           done
           if [[ $m -eq 0 ]]; then
-            namer "${#indices[@]}.wav"
+            namer "n.wav"
             ffmpeg -loglevel error -i "$j" "$endname"
             echo "file '$endname'" >> "$concat"
-            wavfiles+=( "$endname" )
-            indices+=( "$j" )
+            wavs+=( "$endname" )
+            flacs+=( "$j" )
           fi
         done
-        namer "out.wav"
+        namer "out.wav" #Name concat wav file
         ffmpeg -loglevel error -f concat -safe 0 -i "$concat" -c copy "$endname"
         ffmpeg -loglevel error -i "$endname" "$out"
-        rm "${wavfiles[@]}" "$concat" "$endname"
+        rm "${wavs[@]}" "$concat" "$endname"
         ;;
     esac
-    rm "${tlist_list[$i]}"
-    printf "$folder/$out" > "$temp"
+
+    #Applies to any # of tracks, so cleanup tracklist here
+    rm "${tlists_list[$i]}"
+
+    #Absolute path to output stored in prefs
+    printf "$PWD/$out" > "$prefs"
   )
+
   printf "Done!\n"
+
+  #Make vid (finally)
   namer "${titles_list[$i]}.mkv"
   echo "Encoding $endname..."
-  ffmpeg -loglevel error -stats -loop 1 -framerate 2 -i "${todo_list[$i]}" -i "$(cat "$temp")" -c:v libx264 -preset slow -tune stillimage -crf 18 -c:a copy -shortest -pix_fmt yuv420p "$endname"
-  echo "Done!"
-  rm "${todo_list[$i]}" "$(cat "$temp")"
-done
-rm -f "$todo" "$prefs" "$temp" "$tlist" "$titles"
 
-#clear
+  ffmpeg -loglevel error -stats -loop 1 -framerate 2 -i "${images_list[$i]}" -i "$(cat "$prefs")" -c:v libx264 -preset slow -tune stillimage -crf 18 -c:a copy -shortest -pix_fmt yuv420p "$endname"
+
+  printf "Done!\n\n" # A matter of taste, I guess.
+
+  #Cleanup image/audio
+  rm "${images_list[$i]}" "$(cat "$prefs")"
+done
+
+#Cleanup text files
+rm -f "$prefs" "$tlists" "$images" "$titles"
