@@ -52,8 +52,8 @@ images="$PWD/$endname"
 namer "tracklists.txt"
 tlists="$PWD/$endname"
 
-[[ $@ =~ [Ii] ]] && global=Interactive
 [[ $@ =~ [Qq] ]] && global=Quiet
+[[ $@ =~ [Ii] ]] && global=Interactive
 
 if [[ ! $global ]]; then
   echo "Select mode"
