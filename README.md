@@ -14,7 +14,7 @@ sudo apt-get install imagemagick
 brew install imagemagick
 ```
 
-Remember to make executable!
+#### Remember to make the script executable!
 ```
 chmod +x makevid.sh
 ```
