@@ -19,7 +19,7 @@ brew install imagemagick
 chmod +x makevid.sh
 ```
 ## Usage
-- By default, makevid.sh will check the folder in which it is run for audio+images, as well as any immediate subdirectories. Run the script with the `-r` flag (`makevid.sh -r`) for full recursive search.
+- By default, makevid.sh will check the folder in which it is run for audio+images, as well as any immediate subdirectories. Run the script with the `-r` flag (`makevid.sh -r`) for a full recursive search.
 - Interactive mode allows you to customize video titles and tracklists, and to resize images to fit any widescreen resolution (720p, 1080p, custom). Quiet mode will not prompt for user input and will instead use the first image it finds + all flac files in a directory to make a video.
 #### FYI
 - Acceptable image extensions: png, jpg, jpeg. 
