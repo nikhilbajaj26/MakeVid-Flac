@@ -2,14 +2,22 @@
 Interactively create youtube-ready videos from flac file(s) + image.
 ## Requirements
 #### ffmpeg 4 
-- See [AClassicalPlaylist-DL/README](https://github.com/nikhilbajaj26/AClassicalPlaylist-DL/blob/master/README.md) for installation instructions, Mac+Windows
-  - Mac users, you don't need to upgrade to bash 5, although it doesn't hurt to do so.
+- Windows 10 (WSL)
+```
+sudo add-apt-repository ppa:jonathonf/ffmpeg-4
+sudo apt-get update
+sudo apt-get install ffmpeg
+```
+- Mac w/ [Homebrew](https://brew.sh/)
+```
+brew install ffmpeg
+```
 #### ImageMagick
   - Windows 10 (WSL)
 ```
 sudo apt-get install imagemagick
 ```
-  - Mac, using homebrew (you should have it if you followed the above instructions)
+  - Mac w/ Homebrew
 ```
 brew install imagemagick
 ```
