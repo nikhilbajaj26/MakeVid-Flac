@@ -2,7 +2,7 @@
 Interactively create youtube-ready videos from flac file(s) + image. Requires ffmpeg 4 and ImageMagick
 ## Instructions
 #### Windows 10
-First get [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10) (Ubuntu)
+Install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and get Ubuntu from the Windows Store.
 ```
 sudo add-apt-repository ppa:jonathonf/ffmpeg-4
 sudo apt-get update
@@ -10,7 +10,7 @@ sudo apt-get install ffmpeg
 sudo apt-get install imagemagick
 ```
 #### Mac
-Install [Homebrew](https://brew.sh/)
+Install [Homebrew](https://brew.sh/), and run the following in Terminal:
 ```
 brew install ffmpeg
 brew install imagemagick
