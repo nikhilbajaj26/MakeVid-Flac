@@ -17,7 +17,7 @@ brew install ffmpeg
 ```
 sudo apt-get install imagemagick
 ```
-  - Mac w/ Homebrew
+  - Mac
 ```
 brew install imagemagick
 ```
