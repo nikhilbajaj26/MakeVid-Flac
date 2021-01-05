@@ -1,5 +1,6 @@
 # MakeVid-Flac
 Interactively create youtube-ready videos from flac file(s) + image. Requires ffmpeg 4 and ImageMagick
+## Instructions
 ### Windows 10
 - Get [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10) (Ubuntu)
 ```
