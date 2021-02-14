@@ -93,7 +93,7 @@ fi
 makevid () {
 
   [[ ! $(echo *.flac) ]] && return
-  [[ ! $(echo *.{png,jpg,jpeg}) ]] && return
+  [[ ! $(echo *.{png,jpg,jpeg}) ]] && echo "No image in $(basename "$PWD")" && return
 
   title="$(basename "$PWD")"
 
