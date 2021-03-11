@@ -93,7 +93,7 @@ fi
 makevid () {
 
   [[ ! $(echo *.flac) ]] && return
-  [[ ! $(echo *.{png,jpg,jpeg}) ]] && echo "No image in $(basename "$PWD")" && return
+  [[ ! $(echo *.{png,jpg,jpeg,PNG,JPG,JPEG}) ]] && echo "No image in $(basename "$PWD")" && return
 
   title="$(basename "$PWD")"
 
@@ -153,7 +153,7 @@ makevid () {
 
     #Image
     unset list
-    for j in *.{png,jpg,jpeg}; do
+    for j in *.{png,jpg,jpeg,PNG,JPG,JPEG}; do
       for k in {w,h}; do eval "$k=\$(identify -format \"%${k}\" \"$j\")"; done
       list+=( "${j} (${w}x${h})" )
       grep -qs '^n' "$prefs" && break
@@ -219,7 +219,7 @@ makevid () {
 
   #Quiet (title+image)
   else
-    for j in *.{png,jpg,jpeg}; do name="$j"; break; done
+    for j in *.{png,jpg,jpeg,PNG,JPG,JPEG}; do name="$j"; break; done
     for k in {w,h}; do eval "$k=\$(identify -format \"%${k}\" \"$name\")"; done
   fi
 
@@ -380,6 +380,18 @@ for i in "${!titles_list[@]}"; do
       #Artwork removed automatically when concat-demuxing wavs
       *) namer "concat.txt"
         concat="$endname"
+
+        # Determine bit depth
+        bitdepth="$(ffprobe -v error -select_streams a:0 -show_entries stream=bits_per_sample -of default=noprint_wrappers=1:nokey=1 "${tracks[0]}")"
+        if [[ ! "$bitdepth" -eq "16" && ! "$bitdepth" -eq "24" ]]; then
+          bitdepth="$(ffprobe -v error -select_streams a:0 -show_entries stream=bits_per_raw_sample -of default=noprint_wrappers=1:nokey=1 "${tracks[0]}")"
+        fi
+        if [[ "$bitdepth" -eq "24" ]]; then
+          bitcmd="-c:a pcm_s24le"
+        else
+          bitcmd="" # Defaults to 16 bit; wav to flac preserves bit depth
+        fi
+
         for j in "${tracks[@]}"; do
           m=0
           for k in "${!flacs[@]}"; do
@@ -387,16 +399,14 @@ for i in "${!titles_list[@]}"; do
           done
           if [[ $m -eq 0 ]]; then
             namer "n.wav"
-            ffmpeg -loglevel error -i "$j" "$endname"
+            eval "ffmpeg -loglevel error -i \"$j\" $bitcmd \"$endname\""
             echo "file '$endname'" >> "$concat"
             wavs+=( "$endname" )
             flacs+=( "$j" )
           fi
         done
-        namer "out.wav" #Name concat wav file
-        ffmpeg -loglevel error -f concat -safe 0 -i "$concat" -c copy "$endname"
-        ffmpeg -loglevel error -i "$endname" "$out"
-        rm "${wavs[@]}" "$concat" "$endname"
+        ffmpeg -loglevel error -f concat -safe 0 -i "$concat" -c:a flac "$out"
+        rm "${wavs[@]}" "$concat"
         ;;
     esac
 
