@@ -27,3 +27,4 @@ chmod +x makevid.sh
 - The script will not modify any existing files nor generate any extraneous ones upon completion besides the mkv videos. 
 - Audio files are not re-encoded at any point. Stream copy only.
 - Note that image size has no bearing on audio quality when uploading to youtube. As of 6/13/2020, youtube uses the opus codec for all videos.
+- As of 3/10/2021, 24 bit audio supported
